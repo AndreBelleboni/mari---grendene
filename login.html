@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <title>Login - Gestão Grendene</title>
+    <link rel="stylesheet" href="style.css">
+    <style>
+        .login-box { max-width: 350px; margin: 100px auto; text-align: center; }
+        .tab-buttons { display: flex; margin-bottom: 20px; }
+        .tab-buttons button { flex: 1; border-radius: 0; background: #ddd; color: #333; }
+        .tab-buttons button.active { background: #004a99; color: white; }
+    </style>
+</head>
+<body>
+    <div class="container login-box">
+        <header style="margin-bottom: 20px;">
+            <h2>Acesso Restrito</h2>
+        </header>
+        
+        <div class="tab-buttons">
+            <button id="btnTabLogin" class="active" onclick="alternarTab('login')">Login</button>
+            <button id="btnTabRegistro" onclick="alternarTab('registro')">Registrar</button>
+        </div>
+
+        <div id="formLogin">
+            <input type="text" id="userLogin" placeholder="Usuário" style="width: 90%; margin-bottom: 10px;">
+            <input type="password" id="passLogin" placeholder="Senha" style="width: 90%; margin-bottom: 10px;">
+            <button onclick="fazerLogin()" style="width: 100%;">Entrar</button>
+        </div>
+
+        <div id="formRegistro" style="display: none;">
+            <input type="text" id="newUser" placeholder="Criar Usuário" style="width: 90%; margin-bottom: 10px;">
+            <input type="password" id="newPass" placeholder="Criar Senha" style="width: 90%; margin-bottom: 10px;">
+            <button onclick="registrarUsuario()" style="width: 100%; background-color: #28a745;">Criar Conta</button>
+        </div>
+    </div>
+   <script type="module" src="auth.js"></script>
+</body>
+</html>

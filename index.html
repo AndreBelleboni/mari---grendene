@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gestão de Equipe - Maristela</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <header>
+        <h1>Gestão de Equipe - Maristela</h1>
+        <button onclick="logout()" id="btnLogout">Sair</button>
+    </header>
+
+    <main>
+        <div class="container">
+            <h2>➕ Registrar Atendimento</h2>
+            <div class="grid-inputs">
+                <input type="text" id="nome" placeholder="Nome do Liderado" list="listaNomes">
+                <datalist id="listaNomes"></datalist>
+                
+                <input type="date" id="data">
+                <input type="number" id="chat" placeholder="Volume Chat">
+                <input type="number" id="inbox" placeholder="Volume Inbox">
+                <button onclick="salvarDados()">Salvar Dados</button>
+            </div>
+        </div>
+
+        <div class="container">
+            <h2>🔍 Filtros Avançados</h2>
+            <p style="font-size: 0.8rem; color: #666; margin-bottom: 10px;">
+                💡 Segure <b>Ctrl</b> para selecionar vários nomes e ver a média do grupo.
+            </p>
+            <div class="grid-inputs">
+                <select id="buscaNomeMulti" multiple style="height: 100px; flex: 1; min-width: 200px;">
+                    </select>
+                
+                <div style="display: flex; flex-direction: column; gap: 10px; flex: 1;">
+                    <input type="date" id="dataInicio" onchange="filtrar()">
+                    <input type="date" id="dataFim" onchange="filtrar()">
+                </div>
+
+                <div style="display: flex; gap: 10px; align-items: flex-end;">
+                    <button onclick="filtrar()" style="background-color: #a238ff;">Aplicar Filtros</button>
+                    <button class="btn-limpar" onclick="limparFiltros()">Limpar</button>
+                </div>
+            </div>
+        </div>
+
+        <div id="secaoResultados" class="container" style="display: none;">
+            <h2>📊 Resultados Encontrados</h2>
+            <table>
+                <thead>
+                    <tr>
+                        <th>Operador</th>
+                        <th>Data</th>
+                        <th>Chat</th>
+                        <th>Inbox</th>
+                        <th>Total</th>
+                        <th>Status</th>
+                        <th>Ações</th>
+                    </tr>
+                </thead>
+                <tbody id="corpoTabela"></tbody>
+            </table>
+
+            <div id="painelMedia" class="card-media">
+                <h3>Média Total do Período: <span id="valorMedia">0</span></h3>
+                <button onclick="gerarRelatorio()" class="btn-relatorio">📄 Gerar Relatório (PDF)</button>
+            </div>
+        </div>
+    </main>
+
+    <script type="module" src="script.js"></script>
+</body>
+</html>

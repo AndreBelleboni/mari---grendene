@@ -1,0 +1,171 @@
+/* --- CONFIGURAÇÕES GERAIS --- */
+body { 
+    font-family: 'Segoe UI', sans-serif; 
+    background-color: #f8f0f5; 
+    margin: 0;
+    padding: 20px; 
+}
+
+header { 
+    background: linear-gradient(135deg, #004a99 0%, #a238ff 100%); 
+    color: white; 
+    padding: 20px; 
+    border-radius: 12px; 
+    display: flex; 
+    justify-content: space-between; 
+    align-items: center; 
+    margin-bottom: 20px;
+    box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+}
+
+.container { 
+    background: white; 
+    padding: 20px; 
+    border-radius: 10px; 
+    margin-bottom: 20px; 
+    box-shadow: 0 2px 8px rgba(0,0,0,0.05); 
+}
+
+/* --- FORMULÁRIOS E INPUTS --- */
+.grid-inputs { 
+    display: flex; 
+    flex-wrap: wrap; 
+    gap: 15px; /* Aumentei um pouco o espaço entre campos */
+    align-items: flex-start;
+}
+
+input, select { 
+    padding: 12px; 
+    border: 1px solid #ddd; 
+    border-radius: 6px; 
+    font-size: 14px;
+    background-color: white;
+}
+
+input { 
+    flex: 1; 
+    min-width: 150px; 
+}
+
+/* Estilo específico para o seletor múltiplo */
+#buscaNomeMulti {
+    flex: 2; /* Ocupa mais espaço que os outros campos */
+    min-width: 250px;
+    height: 120px; /* Altura fixa para ver vários nomes ao mesmo tempo */
+    cursor: pointer;
+    border: 2px solid #eee;
+}
+
+#buscaNomeMulti option {
+    padding: 8px;
+    border-bottom: 1px solid #f9f9f9;
+}
+
+/* Destaque para quando o nome é selecionado */
+#buscaNomeMulti option:checked {
+    background: #a238ff linear-gradient(0deg, #a238ff 0%, #a238ff 100%) !important;
+    color: white;
+}
+
+button { 
+    background-color: #004a99; 
+    color: white; 
+    border: none; 
+    padding: 12px 25px; 
+    border-radius: 6px; 
+    cursor: pointer; 
+    font-weight: bold;
+    transition: all 0.3s;
+}
+
+button:hover {
+    background-color: #003366;
+    transform: translateY(-1px);
+}
+
+.btn-limpar { background-color: #777; }
+.btn-excluir { 
+    background-color: #ffeded; 
+    color: #d9534f; 
+    border: 1px solid #d9534f; 
+    padding: 6px 10px; 
+    border-radius: 4px; 
+}
+
+/* --- TABELA DE RESULTADOS --- */
+table { 
+    width: 100%; 
+    border-collapse: collapse; 
+    margin-top: 15px; 
+}
+
+th, td { 
+    text-align: left; 
+    padding: 14px; 
+    border-bottom: 1px solid #eee; 
+}
+
+th { 
+    background-color: #fcfaff;
+    color: #004a99; 
+    font-weight: bold; 
+    text-transform: uppercase;
+    font-size: 12px;
+}
+
+.meta-ok { color: #28a745; font-weight: bold; }
+.meta-ruim { color: #d9534f; font-weight: bold; }
+
+/* --- PAINEL DE MÉDIA E RELATÓRIO --- */
+.card-media { 
+    margin-top: 20px; 
+    padding: 25px; 
+    background: #f0f7ff; 
+    border-left: 6px solid #a238ff; 
+    border-radius: 8px;
+}
+
+/* --- CONFIGURAÇÕES DE IMPRESSÃO (PDF) --- */
+@media print {
+    /* 1. Esconde absolutamente tudo na página */
+    body * {
+        visibility: hidden;
+    }
+
+    /* 2. Torna visível APENAS a seção de resultados e o que está dentro dela */
+    #secaoResultados, #secaoResultados * {
+        visibility: visible;
+    }
+
+    /* 3. Posiciona a seção de resultados no topo da página impressa */
+    #secaoResultados {
+        position: absolute;
+        left: 0;
+        top: 0;
+        width: 100%;
+        display: block !important; /* Garante que apareça mesmo se estiver oculto na tela */
+    }
+
+    /* 4. Esconde os botões de excluir e o botão de gerar relatório dentro da tabela */
+    .btn-excluir, .btn-relatorio, .btn-limpar {
+        display: none !important;
+    }
+
+    /* 5. Título do Relatório no PDF */
+    #secaoResultados::before {
+        content: "RELATÓRIO DE GESTÃO";
+        display: block; 
+        text-align: center; 
+        font-size: 1.8rem; 
+        font-weight: bold; 
+        margin-bottom: 20px; 
+        color: #000;
+        visibility: visible;
+    }
+
+    /* Ajuste da tabela para ocupar o papel todo */
+    table {
+        width: 100%;
+        border: 1px solid #ccc;
+    }
+}

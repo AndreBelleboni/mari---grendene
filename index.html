@@ -29,20 +29,31 @@
         <div class="container">
             <h2>🔍 Filtros Avançados</h2>
             <p style="font-size: 0.8rem; color: #666; margin-bottom: 10px;">
-                💡 Segure <b>Ctrl</b> para selecionar vários nomes e ver a média do grupo.
+                💡 Segure <b>Ctrl</b> para selecionar vários nomes.
             </p>
             <div class="grid-inputs">
-                <select id="buscaNomeMulti" multiple style="height: 100px; flex: 1; min-width: 200px;">
-                    </select>
+                <select id="buscaNomeMulti" multiple style="height: 120px; flex: 1; min-width: 250px;"></select>
                 
                 <div style="display: flex; flex-direction: column; gap: 10px; flex: 1;">
+                    <label style="font-size: 0.8rem;">Início:</label>
                     <input type="date" id="dataInicio" onchange="filtrar()">
+                    <label style="font-size: 0.8rem;">Fim:</label>
                     <input type="date" id="dataFim" onchange="filtrar()">
+                    
+                    <label style="font-size: 0.8rem;">Classificar por:</label>
+                    <select id="ordenacao" onchange="filtrar()">
+                        <option value="data_asc">Data (Mais Antigo)</option>
+                        <option value="data_desc">Data (Mais Novo)</option>
+                        <option value="alfabetica">Ordem Alfabética</option>
+                        <option value="maior">Maior Volume</option>
+                        <option value="menor">Menor Volume</option>
+                    </select>
                 </div>
 
-                <div style="display: flex; gap: 10px; align-items: flex-end;">
+                <div style="display: flex; flex-direction: column; gap: 10px; align-items: stretch;">
                     <button onclick="filtrar()" style="background-color: #a238ff;">Aplicar Filtros</button>
-                    <button class="btn-limpar" onclick="limparFiltros()">Limpar</button>
+                    <button class="btn-limpar" onclick="limparFiltros()">Limpar Filtros</button>
+                    <button onclick="excluirAtendenteCompleto()" style="background-color: #ff4d4d; font-size: 0.8rem;">🗑️ Excluir Atendente</button>
                 </div>
             </div>
         </div>
@@ -57,7 +68,7 @@
                         <th>Chat</th>
                         <th>Inbox</th>
                         <th>Total</th>
-                        <th>Status</th>
+                        <th>Meta-120</th>
                         <th>Ações</th>
                     </tr>
                 </thead>
@@ -65,8 +76,30 @@
             </table>
 
             <div id="painelMedia" class="card-media">
-                <h3>Média Total do Período: <span id="valorMedia">0</span></h3>
-                <button onclick="gerarRelatorio()" class="btn-relatorio">📄 Gerar Relatório (PDF)</button>
+                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 15px; margin-bottom: 20px;">
+                    <div>
+                        <small>Total Chat</small>
+                        <h3 id="totalChatPeriodo">0</h3>
+                    </div>
+                    <div>
+                        <small>Total Inbox</small>
+                        <h3 id="totalInboxPeriodo">0</h3>
+                    </div>
+                    <div>
+                        <small>Volume Geral</small>
+                        <h3 id="totalGeralPeriodo">0</h3>
+                    </div>
+                    <div>
+                        <small>Média Geral</small>
+                        <h3 id="valorMedia" style="color: #a238ff;">0</h3>
+                    </div>
+                </div>
+                
+                <hr style="border: 0; border-top: 1px solid #ddd; margin: 20px 0;">
+                
+                <div id="resumoIndividual"></div>
+
+                <button onclick="gerarRelatorio()" class="btn-relatorio" style="margin-top: 20px;">📄 Gerar Relatório (PDF)</button>
             </div>
         </div>
     </main>

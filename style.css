@@ -30,7 +30,7 @@ header {
 .grid-inputs { 
     display: flex; 
     flex-wrap: wrap; 
-    gap: 15px; /* Aumentei um pouco o espaço entre campos */
+    gap: 15px; 
     align-items: flex-start;
 }
 
@@ -47,26 +47,53 @@ input {
     min-width: 150px; 
 }
 
-/* Estilo específico para o seletor múltiplo */
-#buscaNomeMulti {
-    flex: 2; /* Ocupa mais espaço que os outros campos */
+/* --- LISTA DE SELEÇÃO (CHECKBOXES) AJUSTADA --- */
+.lista-checkbox {
+    border: 1px solid #ddd;
+    border-radius: 8px;
+    padding: 10px;
+    max-height: 180px;
+    overflow-y: auto;
+    background: #fff;
+    display: flex;
+    flex-direction: column;
     min-width: 250px;
-    height: 120px; /* Altura fixa para ver vários nomes ao mesmo tempo */
-    cursor: pointer;
-    border: 2px solid #eee;
 }
 
-#buscaNomeMulti option {
-    padding: 8px;
+.item-checkbox {
+    display: flex;
+    align-items: center;
+    justify-content: flex-start; /* Alinha o conteúdo ao início (esquerda) */
+    gap: 10px; /* Define um espaço fixo e curto entre o marcador e o nome */
+    padding: 6px 8px;
+    cursor: pointer;
+    font-size: 0.95rem;
+    width: fit-content; /* Garante que a linha não estique até o final da caixa */
+    transition: background 0.2s;
     border-bottom: 1px solid #f9f9f9;
 }
 
-/* Destaque para quando o nome é selecionado */
-#buscaNomeMulti option:checked {
-    background: #a238ff linear-gradient(0deg, #a238ff 0%, #a238ff 100%) !important;
-    color: white;
+.item-checkbox:last-child { border-bottom: none; }
+.item-checkbox:hover { background-color: #fcfaff; border-radius: 4px; }
+
+.item-checkbox input {
+    cursor: pointer;
+    width: 18px;
+    height: 18px;
+    margin: 0;
+    accent-color: #a238ff;
+    flex-shrink: 0; /* Impede que o checkbox diminua de tamanho */
 }
 
+.label-filtro {
+    font-size: 0.8rem;
+    font-weight: bold;
+    margin-bottom: 5px;
+    display: block;
+    color: #555;
+}
+
+/* --- BOTÕES --- */
 button { 
     background-color: #004a99; 
     color: white; 
@@ -84,12 +111,20 @@ button:hover {
 }
 
 .btn-limpar { background-color: #777; }
-.btn-excluir { 
+
+.btn-perigo { 
     background-color: #ffeded; 
     color: #d9534f; 
     border: 1px solid #d9534f; 
-    padding: 6px 10px; 
-    border-radius: 4px; 
+    font-size: 0.8rem;
+    padding: 8px 15px;
+}
+
+.btn-excluir { 
+    background: none;
+    border: none;
+    cursor: pointer;
+    font-size: 1.2rem;
 }
 
 /* --- TABELA DE RESULTADOS --- */
@@ -116,44 +151,77 @@ th {
 .meta-ok { color: #28a745; font-weight: bold; }
 .meta-ruim { color: #d9534f; font-weight: bold; }
 
-/* --- PAINEL DE MÉDIA E RELATÓRIO --- */
+/* --- PAINEL DE MÉTRICAS EM LINHA --- */
 .card-media { 
     margin-top: 20px; 
     padding: 25px; 
     background: #f0f7ff; 
-    border-left: 6px solid #a238ff; 
+    border-top: 6px solid #a238ff; 
     border-radius: 8px;
+}
+
+.grid-metricas {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 20px;
+    text-align: center;
+}
+
+.grid-metricas div {
+    flex: 1;
+    min-width: 120px;
+}
+
+.grid-metricas small {
+    display: block;
+    text-transform: uppercase;
+    font-size: 0.7rem;
+    color: #666;
+    font-weight: bold;
+    margin-bottom: 5px;
+}
+
+.grid-metricas h3 {
+    margin: 0;
+    font-size: 1.4rem;
+}
+
+.destaque-media { 
+    color: #a238ff; 
+    font-weight: bold;
+}
+
+.divisor {
+    border: 0;
+    border-top: 1px solid #ddd;
+    margin: 20px 0;
+}
+
+/* --- RESUMO INDIVIDUAL --- */
+#resumoIndividual h4 {
+    margin-bottom: 15px;
+    color: #004a99;
 }
 
 /* --- CONFIGURAÇÕES DE IMPRESSÃO (PDF) --- */
 @media print {
-    /* 1. Esconde absolutamente tudo na página */
-    body * {
-        visibility: hidden;
-    }
-
-    /* 2. Torna visível APENAS a seção de resultados e o que está dentro dela */
-    #secaoResultados, #secaoResultados * {
-        visibility: visible;
-    }
-
-    /* 3. Posiciona a seção de resultados no topo da página impressa */
+    body { padding: 0; background-color: white; }
+    body * { visibility: hidden; }
+    #secaoResultados, #secaoResultados * { visibility: visible; }
     #secaoResultados {
         position: absolute;
         left: 0;
         top: 0;
         width: 100%;
-        display: block !important; /* Garante que apareça mesmo se estiver oculto na tela */
+        display: block !important;
     }
-
-    /* 4. Esconde os botões de excluir e o botão de gerar relatório dentro da tabela */
-    .btn-excluir, .btn-relatorio, .btn-limpar {
+    .btn-excluir, .btn-relatorio, .btn-limpar, .btn-perigo, #btnLogout {
         display: none !important;
     }
-
-    /* 5. Título do Relatório no PDF */
     #secaoResultados::before {
-        content: "RELATÓRIO DE GESTÃO";
+        content: "RELATÓRIO DE GESTÃO - EQUIPE MARISTELA";
         display: block; 
         text-align: center; 
         font-size: 1.8rem; 
@@ -162,10 +230,6 @@ th {
         color: #000;
         visibility: visible;
     }
-
-    /* Ajuste da tabela para ocupar o papel todo */
-    table {
-        width: 100%;
-        border: 1px solid #ccc;
-    }
+    table { width: 100%; border: 1px solid #ccc; }
+    th { background-color: #eee !important; color: black !important; }
 }

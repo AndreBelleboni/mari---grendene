@@ -63,12 +63,12 @@ input {
 .item-checkbox {
     display: flex;
     align-items: center;
-    justify-content: flex-start; /* Alinha o conteúdo ao início (esquerda) */
-    gap: 10px; /* Define um espaço fixo e curto entre o marcador e o nome */
+    justify-content: flex-start; 
+    gap: 10px; 
     padding: 6px 8px;
     cursor: pointer;
     font-size: 0.95rem;
-    width: fit-content; /* Garante que a linha não estique até o final da caixa */
+    width: fit-content; 
     transition: background 0.2s;
     border-bottom: 1px solid #f9f9f9;
 }
@@ -82,7 +82,7 @@ input {
     height: 18px;
     margin: 0;
     accent-color: #a238ff;
-    flex-shrink: 0; /* Impede que o checkbox diminua de tamanho */
+    flex-shrink: 0; 
 }
 
 .label-filtro {
@@ -93,7 +93,7 @@ input {
     color: #555;
 }
 
-/* --- BOTÕES --- */
+/* --- BOTÕES E AÇÕES --- */
 button { 
     background-color: #004a99; 
     color: white; 
@@ -120,14 +120,23 @@ button:hover {
     padding: 8px 15px;
 }
 
+.btn-editar {
+    background: none;
+    border: none;
+    cursor: pointer;
+    font-size: 1.1rem;
+    color: #004a99;
+    margin-right: 8px;
+}
+
 .btn-excluir { 
     background: none;
     border: none;
     cursor: pointer;
-    font-size: 1.2rem;
+    font-size: 1.1rem;
 }
 
-/* --- TABELA DE RESULTADOS --- */
+/* --- TABELA E CORES DINÂMICAS --- */
 table { 
     width: 100%; 
     border-collapse: collapse; 
@@ -148,8 +157,9 @@ th {
     font-size: 12px;
 }
 
-.meta-ok { color: #28a745; font-weight: bold; }
-.meta-ruim { color: #d9534f; font-weight: bold; }
+/* Cores de Performance e CSAT */
+.meta-ok, .csat-bom { color: #28a745 !important; font-weight: bold; }
+.meta-ruim, .csat-ruim { color: #d9534f !important; font-weight: bold; }
 
 /* --- PAINEL DE MÉTRICAS EM LINHA --- */
 .card-media { 
@@ -193,19 +203,14 @@ th {
     font-weight: bold;
 }
 
-.divisor {
-    border: 0;
-    border-top: 1px solid #ddd;
-    margin: 20px 0;
+/* Estilo para o CSAT médio no resumo individual */
+.resumo-item {
+    margin-bottom: 10px;
+    padding-bottom: 5px;
+    border-bottom: 1px solid #f0f0f0;
 }
 
-/* --- RESUMO INDIVIDUAL --- */
-#resumoIndividual h4 {
-    margin-bottom: 15px;
-    color: #004a99;
-}
-
-/* --- CONFIGURAÇÕES DE IMPRESSÃO (PDF) --- */
+/* --- CONFIGURAÇÕES DE IMPRESSÃO --- */
 @media print {
     body { padding: 0; background-color: white; }
     body * { visibility: hidden; }
@@ -217,19 +222,7 @@ th {
         width: 100%;
         display: block !important;
     }
-    .btn-excluir, .btn-relatorio, .btn-limpar, .btn-perigo, #btnLogout {
+    .btn-excluir, .btn-editar, .btn-relatorio, .btn-limpar, .btn-perigo, #btnLogout {
         display: none !important;
     }
-    #secaoResultados::before {
-        content: "RELATÓRIO DE GESTÃO - EQUIPE MARISTELA";
-        display: block; 
-        text-align: center; 
-        font-size: 1.8rem; 
-        font-weight: bold; 
-        margin-bottom: 20px; 
-        color: #000;
-        visibility: visible;
-    }
-    table { width: 100%; border: 1px solid #ccc; }
-    th { background-color: #eee !important; color: black !important; }
 }

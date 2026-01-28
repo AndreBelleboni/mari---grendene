@@ -6,13 +6,13 @@ import { onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/
 
 let registrosLocais = [];
 
-// --- CONTROLE DE ACESSO ---
+/* --- CONTROLE DE ACESSO --- */
 onAuthStateChanged(auth, (user) => {
     if (!user) window.location.href = "login.html";
     else escutarDados();
 });
 
-// --- SALVAR DADOS ---
+/* --- SALVAR DADOS --- */
 window.salvarDados = async () => {
     const nome = document.getElementById('nome').value.trim();
     const data = document.getElementById('data').value;
@@ -34,7 +34,7 @@ window.salvarDados = async () => {
     }
 };
 
-// --- EDITAR REGISTRO ---
+/* --- EDITAR REGISTRO --- */
 window.editarRegistro = async (id) => {
     const item = registrosLocais.find(r => r.id === id);
     if (!item) return;
@@ -61,7 +61,7 @@ window.editarRegistro = async (id) => {
     }
 };
 
-// --- ESCUTAR DADOS DO FIREBASE ---
+/* --- ESCUTAR DADOS DO FIREBASE --- */
 function escutarDados() {
     onSnapshot(collection(db, "producao"), (snapshot) => {
         registrosLocais = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
@@ -70,7 +70,7 @@ function escutarDados() {
     });
 }
 
-// --- ATUALIZAR LISTA DE SELEÇÃO (CHECKBOXES) ---
+/* --- ATUALIZAR LISTA DE SELEÇÃO (CHECKBOXES) --- */
 function atualizarListasDeNomes() {
     const containerCheck = document.getElementById('containerCheckboxes');
     if (!containerCheck) return;
@@ -86,7 +86,7 @@ function atualizarListasDeNomes() {
     });
 }
 
-// --- FILTRAR E ORDENAR ---
+/* --- FILTRAR E ORDENAR (DATA PRIMEIRO, NOME COMO DESEMPATE) --- */
 window.filtrar = () => {
     const selecionados = Array.from(document.querySelectorAll('#containerCheckboxes input:checked')).map(cb => cb.value);
     const dataIni = document.getElementById('dataInicio').value;
@@ -99,9 +99,30 @@ window.filtrar = () => {
         return bateNome && noPeriodo;
     });
 
-    if (tipoOrdem === "alfabetica") filtrados.sort((a, b) => a.nome.localeCompare(b.nome));
-    else if (tipoOrdem === "data_desc") filtrados.sort((a, b) => new Date(b.data) - new Date(a.data));
-    else if (tipoOrdem === "maior") filtrados.sort((a, b) => (b.volume || 0) - (a.volume || 0));
+    // Lógica de Ordenação: Data é a prioridade, Nome desempata o dia
+    filtrados.sort((a, b) => {
+        let compPrincipal = 0;
+
+        if (tipoOrdem === "data_asc") {
+            compPrincipal = new Date(a.data) - new Date(b.data);
+        } else if (tipoOrdem === "data_desc") {
+            compPrincipal = new Date(b.data) - new Date(a.data);
+        } else if (tipoOrdem === "maior") {
+            compPrincipal = (b.volume || 0) - (a.volume || 0);
+        } else if (tipoOrdem === "menor") {
+            compPrincipal = (a.volume || 0) - (b.volume || 0);
+        } else if (tipoOrdem === "alfabetica") {
+            // Se o filtro for puramente alfabético, comparamos os nomes primeiro
+            return a.nome.localeCompare(b.nome) || new Date(a.data) - new Date(b.data);
+        }
+
+        // Se o critério principal (Data ou Volume) der empate (0), ordena por Nome
+        if (compPrincipal === 0) {
+            return a.nome.localeCompare(b.nome);
+        }
+        
+        return compPrincipal;
+    });
 
     const temFiltro = selecionados.length > 0 || dataIni || dataFim;
     document.getElementById('secaoResultados').style.display = temFiltro ? 'block' : 'none';
@@ -110,7 +131,7 @@ window.filtrar = () => {
     if (filtrados.length > 0) processarMetricas(filtrados);
 };
 
-// --- RENDERIZAR TABELA ---
+/* --- RENDERIZAR TABELA --- */
 window.renderizarTabela = (lista) => {
     const corpo = document.getElementById('corpoTabela');
     corpo.innerHTML = '';
@@ -136,7 +157,7 @@ window.renderizarTabela = (lista) => {
     });
 };
 
-// --- PROCESSAR MÉTRICAS GERAIS E INDIVIDUAIS ---
+/* --- PROCESSAR MÉTRICAS GERAIS E INDIVIDUAIS --- */
 function processarMetricas(lista) {
     let tChat = 0, tInbox = 0, tVol = 0, somaCsatGeral = 0;
     const resumo = {};
@@ -160,7 +181,6 @@ function processarMetricas(lista) {
 
     const mediaGeralCsat = (somaCsatGeral / lista.length).toFixed(1);
 
-    // Atualiza Painel de Cima
     document.getElementById('totalChatPeriodo').innerText = tChat;
     document.getElementById('totalInboxPeriodo').innerText = tInbox;
     document.getElementById('totalGeralPeriodo').innerText = tVol;
@@ -172,7 +192,6 @@ function processarMetricas(lista) {
         elCsatGeral.className = `destaque-media ${mediaGeralCsat >= 80 ? 'csat-bom' : 'csat-ruim'}`;
     }
 
-    // Gera o Resumo Individual Detalhado
     let html = "<h4>Resumo Individual no Período:</h4><ul style='list-style:none; padding:0;'>";
     Object.keys(resumo).sort().forEach(nome => {
         const r = resumo[nome];
@@ -182,18 +201,34 @@ function processarMetricas(lista) {
 
         html += `<li class="resumo-item">
                     <b>${nome}</b>: Chat: ${r.chat} | Inbox: ${r.inbox} | Total: ${r.total} | 
-                    Média: ${mInd} | CSAT Médio: <b style="color:${corCsat}">${mCsat}%</b>
+                    Média: <b>${mInd}</b> | CSAT Médio: <b style="color:${corCsat}">${mCsat}%</b>
                  </li>`;
     });
     html += "</ul>";
     document.getElementById('resumoIndividual').innerHTML = html;
 }
 
-// --- OUTRAS FUNÇÕES ---
+/* --- FUNÇÕES DE EXCLUSÃO --- */
 window.apagarRegistro = async (id) => { 
     if (confirm("Excluir este registro?")) await deleteDoc(doc(db, "producao", id)); 
 };
 
+window.excluirAtendenteCompleto = async () => {
+    const nome = prompt("Digite o nome EXATO do atendente para excluir TODO o histórico:");
+    if (!nome) return;
+    if (confirm(`ALERTA: Isso apagará permanentemente todos os registros de ${nome}. Confirma?`)) {
+        try {
+            const q = query(collection(db, "producao"), where("nome", "==", nome));
+            const snapshot = await getDocs(q);
+            const batch = writeBatch(db);
+            snapshot.forEach(doc => batch.delete(doc.ref));
+            await batch.commit();
+            alert(`Histórico de ${nome} removido.`);
+        } catch (e) { alert("Erro ao excluir atendente."); }
+    }
+};
+
+/* --- UTILITÁRIOS --- */
 window.limparFiltros = () => {
     document.querySelectorAll('#containerCheckboxes input').forEach(cb => cb.checked = false);
     ['dataInicio', 'dataFim'].forEach(id => document.getElementById(id).value = '');

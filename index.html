@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Dados Operação - Maristela</title>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2"></script>
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
@@ -23,7 +24,7 @@
                 <input type="date" id="data">
                 <input type="number" id="chat" placeholder="Volume Chat">
                 <input type="number" id="inbox" placeholder="Volume Inbox">
-                <input type="number" step="0.1" id="csat" placeholder="CSAT %">
+                <input type="text" id="csat" placeholder="CSAT % (ex: 85,5)">
                 <button onclick="salvarDados()">Salvar Dados</button>
             </div>
         </div>

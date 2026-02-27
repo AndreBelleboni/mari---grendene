@@ -7,13 +7,16 @@ import { onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/
 let registrosLocais = [];
 let meuGrafico = null; 
 
+// Registrar o plugin para mostrar números nos pontos do gráfico
+Chart.register(ChartDataLabels);
+
 /* --- CONTROLE DE ACESSO --- */
 onAuthStateChanged(auth, (user) => {
     if (!user) window.location.href = "login.html";
     else escutarDados();
 });
 
-/* --- FUNÇÕES DE INTERFACE (MOSTRAR/ESCONDER) --- */
+/* --- INTERFACE --- */
 window.toggleGrafico = () => {
     const check = document.getElementById('exibirGrafico').checked;
     const container = document.getElementById('containerDoGrafico');
@@ -27,13 +30,16 @@ window.togglePerformance = () => {
     container.style.display = check ? 'block' : 'none';
 };
 
-/* --- SALVAR DADOS --- */
+/* --- SALVAR E EDITAR (COM SUPORTE A VÍRGULA) --- */
 window.salvarDados = async () => {
     const nome = document.getElementById('nome').value.trim();
     const data = document.getElementById('data').value;
     const chat = parseInt(document.getElementById('chat').value) || 0;
     const inbox = parseInt(document.getElementById('inbox').value) || 0;
-    const csat = parseFloat(document.getElementById('csat').value) || 0;
+    
+    const csatInput = document.getElementById('csat').value;
+    const csat = parseFloat(csatInput.toString().replace(',', '.')) || 0;
+    
     const volumeTotal = chat + inbox;
 
     if (nome && data) {
@@ -41,27 +47,27 @@ window.salvarDados = async () => {
             await addDoc(collection(db, "producao"), { 
                 nome, data, chat, inbox, volume: volumeTotal, csat: csat 
             });
-            alert("Dados salvos com sucesso!");
-            ['nome', 'chat', 'inbox', 'csat'].forEach(id => document.getElementById(id).value = '');
+            alert("Dados salvos!");
+            ['nome', 'chat', 'inbox', 'csat', 'data'].forEach(id => {
+                const el = document.getElementById(id);
+                if(el) el.value = '';
+            });
         } catch (e) { alert("Erro ao salvar."); }
-    } else {
-        alert("Preencha Nome e Data.");
     }
 };
 
-/* --- EDITAR REGISTRO --- */
 window.editarRegistro = async (id) => {
     const item = registrosLocais.find(r => r.id === id);
     if (!item) return;
 
-    const nC = prompt(`Novo Chat para ${item.nome}:`, item.chat);
-    const nI = prompt(`Novo Inbox para ${item.nome}:`, item.inbox);
-    const nS = prompt(`Novo CSAT % para ${item.nome}:`, item.csat);
+    const nC = prompt(`Novo Chat:`, item.chat);
+    const nI = prompt(`Novo Inbox:`, item.inbox);
+    const nS = prompt(`Novo CSAT % (use vírgula se quiser):`, item.csat);
 
     if (nC !== null && nI !== null && nS !== null) {
         const vC = parseInt(nC) || 0;
         const vI = parseInt(nI) || 0;
-        const vS = parseFloat(nS) || 0;
+        const vS = parseFloat(nS.toString().replace(',', '.')) || 0;
         try {
             await updateDoc(doc(db, "producao", id), {
                 chat: vC, inbox: vI, csat: vS, volume: vC + vI
@@ -70,7 +76,7 @@ window.editarRegistro = async (id) => {
     }
 };
 
-/* --- ESCUTAR DADOS DO FIREBASE --- */
+/* --- ESCUTAR E FILTRAR --- */
 function escutarDados() {
     onSnapshot(collection(db, "producao"), (snapshot) => {
         registrosLocais = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
@@ -80,16 +86,13 @@ function escutarDados() {
     });
 }
 
-/* --- AUTOCOMPLETE E FILTROS --- */
 function atualizarSugestoesAutocomplete() {
     const datalist = document.getElementById('listaNomes');
     if (!datalist) return;
     const nomesUnicos = [...new Set(registrosLocais.map(item => item.nome))].filter(n => n).sort();
     datalist.innerHTML = ''; 
     nomesUnicos.forEach(nome => {
-        const opcao = document.createElement('option');
-        opcao.value = nome;
-        datalist.appendChild(opcao);
+        const o = document.createElement('option'); o.value = nome; datalist.appendChild(o);
     });
 }
 
@@ -106,7 +109,6 @@ function atualizarListasDeNomes() {
     });
 }
 
-/* --- FILTRAR E RENDERIZAR --- */
 window.filtrar = () => {
     const selecionados = Array.from(document.querySelectorAll('#containerCheckboxes input:checked')).map(cb => cb.value);
     const dataIni = document.getElementById('dataInicio').value;
@@ -121,83 +123,86 @@ window.filtrar = () => {
         return bateNome && noPeriodo;
     });
 
-    // Ordenação da Tabela
     filtrados.sort((a, b) => {
         if (tipoOrdem === "data_asc") return a.data.localeCompare(b.data);
         if (tipoOrdem === "data_desc") return b.data.localeCompare(a.data);
         if (tipoOrdem === "maior") return (b.volume || 0) - (a.volume || 0);
         if (tipoOrdem === "menor") return (a.volume || 0) - (b.volume || 0);
-        if (tipoOrdem === "alfabetica") return a.nome.localeCompare(b.nome);
-        return 0;
+        return a.nome.localeCompare(b.nome);
     });
 
-    const temFiltro = selecionados.length > 0 || dataIni || dataFim;
-    document.getElementById('secaoResultados').style.display = temFiltro ? 'block' : 'none';
+    document.getElementById('secaoResultados').style.display = (selecionados.length > 0 || dataIni) ? 'block' : 'none';
     
     renderizarTabela(filtrados);
-    
     if (filtrados.length > 0) {
         processarMetricas(filtrados);
         if (graficoAtivo) {
-            // Para o gráfico, sempre ordenamos por data crescente
             const paraGrafico = [...filtrados].sort((a, b) => a.data.localeCompare(b.data));
-            gerarGrafico(paraGrafico, tipoMetrica);
+            gerarGrafico(paraGrafico, tipoMetrica, selecionados);
         }
     }
 };
 
-/* --- GERAR GRÁFICO --- */
-function gerarGrafico(dados, metrica) {
+/* --- NOVO GRÁFICO (MÚLTIPLAS LINHAS + NÚMEROS FIXOS) --- */
+function gerarGrafico(dados, metrica, selecionados) {
     const canvas = document.getElementById('graficoEvolucao');
     if (!canvas) return;
     const ctx = canvas.getContext('2d');
     if (meuGrafico) meuGrafico.destroy();
 
-    const dadosAgrupados = dados.reduce((acc, item) => {
-        const dataFormatada = item.data.split('-').reverse().slice(0, 2).join('/');
-        if (!acc[dataFormatada]) acc[dataFormatada] = { soma: 0, qtd: 0 };
-        acc[dataFormatada].soma += (item[metrica] || 0);
-        acc[dataFormatada].qtd++;
-        return acc;
-    }, {});
+    const datasUnicas = [...new Set(dados.map(d => d.data))].sort();
+    const labelsFormatadas = datasUnicas.map(d => d.split('-').reverse().slice(0, 2).join('/'));
 
-    const labels = Object.keys(dadosAgrupados);
-    const valores = Object.values(dadosAgrupados).map(d => 
-        metrica === 'csat' ? (d.soma / d.qtd).toFixed(1) : d.soma
-    );
+    const nomesNoGrafico = selecionados.length > 0 ? selecionados : [...new Set(dados.map(d => d.nome))];
+    const cores = ['#007bff', '#28a745', '#ffc107', '#dc3545', '#6610f2', '#fd7e14', '#20c997'];
 
-    const coresPontos = valores.map(v => {
-        if (metrica === 'csat') return v >= 80 ? '#28a745' : '#d9534f'; 
-        if (metrica === 'volume') return v >= 120 ? '#28a745' : '#d9534f';
-        return '#007bff';
+    const datasets = nomesNoGrafico.map((nome, index) => {
+        const corBase = cores[index % cores.length];
+        const valoresData = datasUnicas.map(data => {
+            const reg = dados.find(d => d.data === data && d.nome === nome);
+            if (!reg) return null;
+            return metrica === 'csat' ? reg.csat : reg[metrica];
+        });
+
+        return {
+            label: nome,
+            data: valoresData,
+            borderColor: corBase,
+            backgroundColor: corBase,
+            pointRadius: 6,
+            tension: 0.2,
+            spanGaps: true,
+            datalabels: {
+                align: 'top',
+                anchor: 'end',
+                formatter: (val) => val !== null ? (metrica === 'csat' ? val + '%' : val) : ''
+            }
+        };
     });
 
     meuGrafico = new Chart(ctx, {
         type: 'line',
-        data: {
-            labels: labels,
-            datasets: [{
-                label: metrica.toUpperCase(),
-                data: valores,
-                borderColor: (metrica === 'csat' || metrica === 'volume') ? '#666' : '#007bff',
-                pointBackgroundColor: coresPontos,
-                pointRadius: 6,
-                borderWidth: 2,
-                tension: 0.3,
-                fill: (metrica !== 'csat' && metrica !== 'volume')
-            }]
-        },
+        data: { labels: labelsFormatadas, datasets: datasets },
         options: {
             responsive: true,
-            scales: { y: { beginAtZero: true, max: metrica === 'csat' ? 100 : undefined } }
+            layout: { padding: { top: 30 } },
+            plugins: {
+                legend: { display: true, position: 'top' },
+                datalabels: {
+                    display: true,
+                    color: '#444',
+                    font: { weight: 'bold', size: 11 },
+                    padding: 4
+                }
+            },
+            scales: { y: { beginAtZero: true, max: metrica === 'csat' ? 110 : undefined } }
         }
     });
 }
 
-/* --- RENDERIZAR TABELA --- */
+/* --- TABELA E MÉTRICAS --- */
 window.renderizarTabela = (lista) => {
     const corpo = document.getElementById('corpoTabela');
-    if (!corpo) return;
     corpo.innerHTML = '';
     lista.forEach(item => {
         const vS = parseFloat(item.csat) || 0;
@@ -218,7 +223,6 @@ window.renderizarTabela = (lista) => {
     });
 };
 
-/* --- PROCESSAR MÉTRICAS --- */
 function processarMetricas(lista) {
     let tC = 0, tI = 0, tV = 0, sS = 0;
     const resumo = {};
@@ -239,47 +243,38 @@ function processarMetricas(lista) {
         resumo[item.nome].qtd++;
     });
 
-    const mGeralS = (sS / lista.length).toFixed(1);
     document.getElementById('totalChatPeriodo').innerText = tC;
     document.getElementById('totalInboxPeriodo').innerText = tI;
     document.getElementById('totalGeralPeriodo').innerText = tV;
     document.getElementById('valorMedia').innerText = (tV / lista.length).toFixed(2);
-    
-    const elS = document.getElementById('totalCsatGeral');
-    elS.innerText = mGeralS + "%";
-    elS.className = `destaque-media ${mGeralS >= 80 ? 'csat-bom' : 'csat-ruim'}`;
+    document.getElementById('totalCsatGeral').innerText = (sS / lista.length).toFixed(1) + "%";
 
     let html = "<h4>Resumo Individual no Período:</h4><ul style='list-style:none; padding:0;'>";
     Object.keys(resumo).sort().forEach(nome => {
         const r = resumo[nome];
-        const mI = (r.total / r.qtd).toFixed(2);
         const cor = r.ultimoCsat >= 80 ? "#28a745" : "#d9534f";
-        html += `<li class="resumo-item"><b>${nome}</b>: Total: ${r.total} | Média: ${mI} | Último CSAT: <b style="color:${cor}">${r.ultimoCsat}%</b></li>`;
+        html += `<li class="resumo-item" style="margin-bottom:8px;">
+            <b>${nome}</b>: Chat: ${r.chat} | Inbox: ${r.inbox} | Total: ${r.total} |  CSAT: <b style="color:${cor}">${r.ultimoCsat}%</b>
+        </li>`;
     });
-    document.getElementById('resumoIndividual').innerHTML = html;
+    document.getElementById('resumoIndividual').innerHTML = html + "</ul>";
 }
 
-/* --- EXCLUSÃO E UTILITÁRIOS --- */
-window.apagarRegistro = async (id) => { 
-    if (confirm("Excluir este registro?")) await deleteDoc(doc(db, "producao", id)); 
-};
-
+/* --- UTILITÁRIOS --- */
+window.apagarRegistro = async (id) => { if (confirm("Excluir registro?")) await deleteDoc(doc(db, "producao", id)); };
 window.excluirAtendenteCompleto = async () => {
-    const nome = prompt("Digite o nome EXATO do atendente para excluir TUDO:");
-    if (nome && confirm(`Apagar todo o histórico de ${nome}?`)) {
-        const q = query(collection(db, "producao"), where("nome", "==", nome));
-        const snap = await getDocs(q);
+    const n = prompt("Nome EXATO do atendente para excluir tudo:");
+    if (n && confirm(`Apagar histórico de ${n}?`)) {
+        const snap = await getDocs(query(collection(db, "producao"), where("nome", "==", n)));
         const batch = writeBatch(db);
         snap.forEach(d => batch.delete(d.ref));
         await batch.commit();
     }
 };
-
 window.limparFiltros = () => {
     document.querySelectorAll('#containerCheckboxes input').forEach(cb => cb.checked = false);
     ['dataInicio', 'dataFim'].forEach(id => document.getElementById(id).value = '');
     filtrar();
 };
-
 window.logout = () => signOut(auth);
 window.gerarRelatorio = () => window.print();

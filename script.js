@@ -5,12 +5,27 @@ import {
 import { onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
 
 let registrosLocais = [];
+let meuGrafico = null; 
 
 /* --- CONTROLE DE ACESSO --- */
 onAuthStateChanged(auth, (user) => {
     if (!user) window.location.href = "login.html";
     else escutarDados();
 });
+
+/* --- FUNÇÕES DE INTERFACE (MOSTRAR/ESCONDER) --- */
+window.toggleGrafico = () => {
+    const check = document.getElementById('exibirGrafico').checked;
+    const container = document.getElementById('containerDoGrafico');
+    container.style.display = check ? 'block' : 'none';
+    if (check) filtrar(); 
+};
+
+window.togglePerformance = () => {
+    const check = document.getElementById('exibirTabela').checked;
+    const container = document.getElementById('containerPerformance');
+    container.style.display = check ? 'block' : 'none';
+};
 
 /* --- SALVAR DADOS --- */
 window.salvarDados = async () => {
@@ -39,24 +54,18 @@ window.editarRegistro = async (id) => {
     const item = registrosLocais.find(r => r.id === id);
     if (!item) return;
 
-    const novoChat = prompt(`Novo volume Chat para ${item.nome}:`, item.chat);
-    const novoInbox = prompt(`Novo volume Inbox para ${item.nome}:`, item.inbox);
-    const novoCsat = prompt(`Novo CSAT % para ${item.nome}:`, item.csat);
+    const nC = prompt(`Novo Chat para ${item.nome}:`, item.chat);
+    const nI = prompt(`Novo Inbox para ${item.nome}:`, item.inbox);
+    const nS = prompt(`Novo CSAT % para ${item.nome}:`, item.csat);
 
-    if (novoChat !== null && novoInbox !== null && novoCsat !== null) {
-        const vChat = parseInt(novoChat) || 0;
-        const vInbox = parseInt(novoInbox) || 0;
-        const vCsat = parseFloat(novoCsat) || 0;
-        const volumeTotal = vChat + vInbox;
-
+    if (nC !== null && nI !== null && nS !== null) {
+        const vC = parseInt(nC) || 0;
+        const vI = parseInt(nI) || 0;
+        const vS = parseFloat(nS) || 0;
         try {
             await updateDoc(doc(db, "producao", id), {
-                chat: vChat,
-                inbox: vInbox,
-                csat: vCsat,
-                volume: volumeTotal
+                chat: vC, inbox: vI, csat: vS, volume: vC + vI
             });
-            alert("Registro atualizado!");
         } catch (e) { alert("Erro ao atualizar."); }
     }
 };
@@ -66,18 +75,29 @@ function escutarDados() {
     onSnapshot(collection(db, "producao"), (snapshot) => {
         registrosLocais = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
         atualizarListasDeNomes(); 
+        atualizarSugestoesAutocomplete(); 
         filtrar();
     });
 }
 
-/* --- ATUALIZAR LISTA DE SELEÇÃO (CHECKBOXES) --- */
+/* --- AUTOCOMPLETE E FILTROS --- */
+function atualizarSugestoesAutocomplete() {
+    const datalist = document.getElementById('listaNomes');
+    if (!datalist) return;
+    const nomesUnicos = [...new Set(registrosLocais.map(item => item.nome))].filter(n => n).sort();
+    datalist.innerHTML = ''; 
+    nomesUnicos.forEach(nome => {
+        const opcao = document.createElement('option');
+        opcao.value = nome;
+        datalist.appendChild(opcao);
+    });
+}
+
 function atualizarListasDeNomes() {
     const containerCheck = document.getElementById('containerCheckboxes');
     if (!containerCheck) return;
-
     const nomesUnicos = [...new Set(registrosLocais.map(item => item.nome))].sort();
     containerCheck.innerHTML = ''; 
-
     nomesUnicos.forEach(nome => {
         const label = document.createElement('label');
         label.className = 'item-checkbox';
@@ -86,12 +106,14 @@ function atualizarListasDeNomes() {
     });
 }
 
-/* --- FILTRAR E ORDENAR (DATA PRIMEIRO, NOME COMO DESEMPATE) --- */
+/* --- FILTRAR E RENDERIZAR --- */
 window.filtrar = () => {
     const selecionados = Array.from(document.querySelectorAll('#containerCheckboxes input:checked')).map(cb => cb.value);
     const dataIni = document.getElementById('dataInicio').value;
     const dataFim = document.getElementById('dataFim').value;
     const tipoOrdem = document.getElementById('ordenacao').value;
+    const tipoMetrica = document.getElementById('tipoGrafico').value;
+    const graficoAtivo = document.getElementById('exibirGrafico').checked;
     
     let filtrados = registrosLocais.filter(item => {
         const bateNome = selecionados.length === 0 || selecionados.includes(item.nome);
@@ -99,47 +121,86 @@ window.filtrar = () => {
         return bateNome && noPeriodo;
     });
 
-    // Lógica de Ordenação: Data é a prioridade, Nome desempata o dia
+    // Ordenação da Tabela
     filtrados.sort((a, b) => {
-        let compPrincipal = 0;
-
-        if (tipoOrdem === "data_asc") {
-            compPrincipal = new Date(a.data) - new Date(b.data);
-        } else if (tipoOrdem === "data_desc") {
-            compPrincipal = new Date(b.data) - new Date(a.data);
-        } else if (tipoOrdem === "maior") {
-            compPrincipal = (b.volume || 0) - (a.volume || 0);
-        } else if (tipoOrdem === "menor") {
-            compPrincipal = (a.volume || 0) - (b.volume || 0);
-        } else if (tipoOrdem === "alfabetica") {
-            // Se o filtro for puramente alfabético, comparamos os nomes primeiro
-            return a.nome.localeCompare(b.nome) || new Date(a.data) - new Date(b.data);
-        }
-
-        // Se o critério principal (Data ou Volume) der empate (0), ordena por Nome
-        if (compPrincipal === 0) {
-            return a.nome.localeCompare(b.nome);
-        }
-        
-        return compPrincipal;
+        if (tipoOrdem === "data_asc") return a.data.localeCompare(b.data);
+        if (tipoOrdem === "data_desc") return b.data.localeCompare(a.data);
+        if (tipoOrdem === "maior") return (b.volume || 0) - (a.volume || 0);
+        if (tipoOrdem === "menor") return (a.volume || 0) - (b.volume || 0);
+        if (tipoOrdem === "alfabetica") return a.nome.localeCompare(b.nome);
+        return 0;
     });
 
     const temFiltro = selecionados.length > 0 || dataIni || dataFim;
     document.getElementById('secaoResultados').style.display = temFiltro ? 'block' : 'none';
     
     renderizarTabela(filtrados);
-    if (filtrados.length > 0) processarMetricas(filtrados);
+    
+    if (filtrados.length > 0) {
+        processarMetricas(filtrados);
+        if (graficoAtivo) {
+            // Para o gráfico, sempre ordenamos por data crescente
+            const paraGrafico = [...filtrados].sort((a, b) => a.data.localeCompare(b.data));
+            gerarGrafico(paraGrafico, tipoMetrica);
+        }
+    }
 };
+
+/* --- GERAR GRÁFICO --- */
+function gerarGrafico(dados, metrica) {
+    const canvas = document.getElementById('graficoEvolucao');
+    if (!canvas) return;
+    const ctx = canvas.getContext('2d');
+    if (meuGrafico) meuGrafico.destroy();
+
+    const dadosAgrupados = dados.reduce((acc, item) => {
+        const dataFormatada = item.data.split('-').reverse().slice(0, 2).join('/');
+        if (!acc[dataFormatada]) acc[dataFormatada] = { soma: 0, qtd: 0 };
+        acc[dataFormatada].soma += (item[metrica] || 0);
+        acc[dataFormatada].qtd++;
+        return acc;
+    }, {});
+
+    const labels = Object.keys(dadosAgrupados);
+    const valores = Object.values(dadosAgrupados).map(d => 
+        metrica === 'csat' ? (d.soma / d.qtd).toFixed(1) : d.soma
+    );
+
+    const coresPontos = valores.map(v => {
+        if (metrica === 'csat') return v >= 80 ? '#28a745' : '#d9534f'; 
+        if (metrica === 'volume') return v >= 120 ? '#28a745' : '#d9534f';
+        return '#007bff';
+    });
+
+    meuGrafico = new Chart(ctx, {
+        type: 'line',
+        data: {
+            labels: labels,
+            datasets: [{
+                label: metrica.toUpperCase(),
+                data: valores,
+                borderColor: (metrica === 'csat' || metrica === 'volume') ? '#666' : '#007bff',
+                pointBackgroundColor: coresPontos,
+                pointRadius: 6,
+                borderWidth: 2,
+                tension: 0.3,
+                fill: (metrica !== 'csat' && metrica !== 'volume')
+            }]
+        },
+        options: {
+            responsive: true,
+            scales: { y: { beginAtZero: true, max: metrica === 'csat' ? 100 : undefined } }
+        }
+    });
+}
 
 /* --- RENDERIZAR TABELA --- */
 window.renderizarTabela = (lista) => {
     const corpo = document.getElementById('corpoTabela');
+    if (!corpo) return;
     corpo.innerHTML = '';
     lista.forEach(item => {
-        const vCsat = parseFloat(item.csat) || 0;
-        const statusMeta = item.volume >= 120 ? "meta-ok" : "meta-ruim";
-        const statusCsat = vCsat >= 80 ? "csat-bom" : "csat-ruim";
-        
+        const vS = parseFloat(item.csat) || 0;
         corpo.innerHTML += `
             <tr>
                 <td>${item.nome}</td>
@@ -147,8 +208,8 @@ window.renderizarTabela = (lista) => {
                 <td>${item.chat || 0}</td>
                 <td>${item.inbox || 0}</td>
                 <td>${item.volume || 0}</td>
-                <td><span class="${statusMeta}">${item.volume >= 120 ? 'Acima' : 'Abaixo'}</span></td>
-                <td><span class="${statusCsat}">${vCsat}%</span></td>
+                <td><span class="${item.volume >= 120 ? 'meta-ok' : 'meta-ruim'}">${item.volume >= 120 ? 'Acima' : 'Abaixo'}</span></td>
+                <td><span class="${vS >= 80 ? 'csat-bom' : 'csat-ruim'}">${vS}%</span></td>
                 <td>
                     <button class="btn-editar" onclick="editarRegistro('${item.id}')">✏️</button>
                     <button class="btn-excluir" onclick="apagarRegistro('${item.id}')">🗑️</button>
@@ -157,84 +218,68 @@ window.renderizarTabela = (lista) => {
     });
 };
 
-/* --- PROCESSAR MÉTRICAS GERAIS E INDIVIDUAIS --- */
+/* --- PROCESSAR MÉTRICAS --- */
 function processarMetricas(lista) {
-    let tChat = 0, tInbox = 0, tVol = 0, somaCsatGeral = 0;
+    let tC = 0, tI = 0, tV = 0, sS = 0;
     const resumo = {};
 
     lista.forEach(item => {
-        const csatVal = parseFloat(item.csat) || 0;
-        tChat += (item.chat || 0);
-        tInbox += (item.inbox || 0);
-        tVol += (item.volume || 0);
-        somaCsatGeral += csatVal;
+        const csat = parseFloat(item.csat) || 0;
+        tC += (item.chat || 0); tI += (item.inbox || 0); tV += (item.volume || 0); sS += csat;
 
         if (!resumo[item.nome]) {
-            resumo[item.nome] = { chat: 0, inbox: 0, total: 0, qtd: 0, somaCsat: 0 };
+            resumo[item.nome] = { chat: 0, inbox: 0, total: 0, qtd: 0, ultimoCsat: csat, ultimaData: item.data };
+        } else if (item.data >= resumo[item.nome].ultimaData) {
+            resumo[item.nome].ultimoCsat = csat;
+            resumo[item.nome].ultimaData = item.data;
         }
         resumo[item.nome].chat += (item.chat || 0);
         resumo[item.nome].inbox += (item.inbox || 0);
         resumo[item.nome].total += (item.volume || 0);
-        resumo[item.nome].somaCsat += csatVal;
         resumo[item.nome].qtd++;
     });
 
-    const mediaGeralCsat = (somaCsatGeral / lista.length).toFixed(1);
-
-    document.getElementById('totalChatPeriodo').innerText = tChat;
-    document.getElementById('totalInboxPeriodo').innerText = tInbox;
-    document.getElementById('totalGeralPeriodo').innerText = tVol;
-    document.getElementById('valorMedia').innerText = (tVol / lista.length).toFixed(2);
+    const mGeralS = (sS / lista.length).toFixed(1);
+    document.getElementById('totalChatPeriodo').innerText = tC;
+    document.getElementById('totalInboxPeriodo').innerText = tI;
+    document.getElementById('totalGeralPeriodo').innerText = tV;
+    document.getElementById('valorMedia').innerText = (tV / lista.length).toFixed(2);
     
-    const elCsatGeral = document.getElementById('totalCsatGeral');
-    if (elCsatGeral) {
-        elCsatGeral.innerText = mediaGeralCsat + "%";
-        elCsatGeral.className = `destaque-media ${mediaGeralCsat >= 80 ? 'csat-bom' : 'csat-ruim'}`;
-    }
+    const elS = document.getElementById('totalCsatGeral');
+    elS.innerText = mGeralS + "%";
+    elS.className = `destaque-media ${mGeralS >= 80 ? 'csat-bom' : 'csat-ruim'}`;
 
     let html = "<h4>Resumo Individual no Período:</h4><ul style='list-style:none; padding:0;'>";
     Object.keys(resumo).sort().forEach(nome => {
         const r = resumo[nome];
-        const mInd = (r.total / r.qtd).toFixed(2);
-        const mCsat = (r.somaCsat / r.qtd).toFixed(1);
-        const corCsat = mCsat >= 80 ? "#28a745" : "#d9534f";
-
-        html += `<li class="resumo-item">
-                    <b>${nome}</b>: Chat: ${r.chat} | Inbox: ${r.inbox} | Total: ${r.total} | 
-                    Média: <b>${mInd}</b> | CSAT Médio: <b style="color:${corCsat}">${mCsat}%</b>
-                 </li>`;
+        const mI = (r.total / r.qtd).toFixed(2);
+        const cor = r.ultimoCsat >= 80 ? "#28a745" : "#d9534f";
+        html += `<li class="resumo-item"><b>${nome}</b>: Total: ${r.total} | Média: ${mI} | Último CSAT: <b style="color:${cor}">${r.ultimoCsat}%</b></li>`;
     });
-    html += "</ul>";
     document.getElementById('resumoIndividual').innerHTML = html;
 }
 
-/* --- FUNÇÕES DE EXCLUSÃO --- */
+/* --- EXCLUSÃO E UTILITÁRIOS --- */
 window.apagarRegistro = async (id) => { 
     if (confirm("Excluir este registro?")) await deleteDoc(doc(db, "producao", id)); 
 };
 
 window.excluirAtendenteCompleto = async () => {
-    const nome = prompt("Digite o nome EXATO do atendente para excluir TODO o histórico:");
-    if (!nome) return;
-    if (confirm(`ALERTA: Isso apagará permanentemente todos os registros de ${nome}. Confirma?`)) {
-        try {
-            const q = query(collection(db, "producao"), where("nome", "==", nome));
-            const snapshot = await getDocs(q);
-            const batch = writeBatch(db);
-            snapshot.forEach(doc => batch.delete(doc.ref));
-            await batch.commit();
-            alert(`Histórico de ${nome} removido.`);
-        } catch (e) { alert("Erro ao excluir atendente."); }
+    const nome = prompt("Digite o nome EXATO do atendente para excluir TUDO:");
+    if (nome && confirm(`Apagar todo o histórico de ${nome}?`)) {
+        const q = query(collection(db, "producao"), where("nome", "==", nome));
+        const snap = await getDocs(q);
+        const batch = writeBatch(db);
+        snap.forEach(d => batch.delete(d.ref));
+        await batch.commit();
     }
 };
 
-/* --- UTILITÁRIOS --- */
 window.limparFiltros = () => {
     document.querySelectorAll('#containerCheckboxes input').forEach(cb => cb.checked = false);
     ['dataInicio', 'dataFim'].forEach(id => document.getElementById(id).value = '');
-    document.getElementById('ordenacao').value = 'data_desc';
     filtrar();
 };
 
-window.gerarRelatorio = () => window.print();
 window.logout = () => signOut(auth);
+window.gerarRelatorio = () => window.print();

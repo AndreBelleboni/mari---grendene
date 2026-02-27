@@ -4,11 +4,12 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Dados Operação - Maristela</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
     <header>
-        <h1>Dados Operação  - Maristela</h1>
+        <h1>Dados Operação - Maristela</h1>
         <button onclick="logout()" id="btnLogout">Sair</button>
     </header>
 
@@ -16,7 +17,7 @@
         <div class="container">
             <h2>➕ Registrar Atendimento</h2>
             <div class="grid-inputs">
-                <input type="text" id="nome" placeholder="Nome do Liderado" list="listaNomes">
+                <input type="text" id="nome" placeholder="Nome do Liderado" list="listaNomes" autocomplete="off">
                 <datalist id="listaNomes"></datalist>
                 
                 <input type="date" id="data">
@@ -32,8 +33,7 @@
             <div class="grid-inputs">
                 <div style="flex: 1; min-width: 250px;">
                     <label class="label-filtro">Selecionar Equipe:</label>
-                    <div id="containerCheckboxes" class="lista-checkbox">
-                        </div>
+                    <div id="containerCheckboxes" class="lista-checkbox"></div>
                 </div>
                 
                 <div style="display: flex; flex-direction: column; gap: 10px; flex: 1;">
@@ -60,34 +60,61 @@
         </div>
 
         <div id="secaoResultados" class="container" style="display: none;">
-            <h2>📊 Performance</h2>
-            <table>
-                <thead>
-                    <tr>
-                        <th>Operador</th>
-                        <th>Data</th>
-                        <th>Chat</th>
-                        <th>Inbox</th>
-                        <th>Total</th>
-                        <th>Meta-120</th>
-                        <th>CSAT</th>
-                        <th>Ações</th>
-                    </tr>
-                </thead>
-                <tbody id="corpoTabela"></tbody>
-            </table>
+            <h2>📊 Performance e Evolução</h2>
 
-            <div id="painelMedia" class="card-media">
-                <div class="grid-metricas">
-                    <div><small>Total Chat</small><h3 id="totalChatPeriodo">0</h3></div>
-                    <div><small>Total Inbox</small><h3 id="totalInboxPeriodo">0</h3></div>
-                    <div><small>Volume Geral</small><h3 id="totalGeralPeriodo">0</h3></div>
-                    <div><small>Média Geral Volume</small><h3 id="valorMedia" class="destaque-media">0</h3></div>
-                    <div><small>CSAT Geral</small><h3 id="totalCsatGeral" class="destaque-media">0%</h3></div>
+            <div style="margin-bottom: 20px; display: flex; flex-wrap: wrap; gap: 20px; background: #f9f9f9; padding: 10px; border-radius: 8px;">
+                <label class="label-switch">
+                    <input type="checkbox" id="exibirGrafico" checked onchange="toggleGrafico()">
+                    <span>📈 Gráfico de Evolução</span>
+                </label>
+                <label class="label-switch">
+                    <input type="checkbox" id="exibirTabela" checked onchange="togglePerformance()">
+                    <span>📋 Tabela de Performance</span>
+                </label>
+            </div>
+
+            <div id="containerDoGrafico" class="container-grafico" style="background: #fff; padding: 15px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); margin-bottom: 20px;">
+                <div style="margin-bottom: 10px; display: flex; gap: 10px; align-items: center;">
+                    <label>Ver evolução de:</label>
+                    <select id="tipoGrafico" onchange="filtrar()">
+                        <option value="csat">Evolução de CSAT (%)</option>
+                        <option value="chat">Volume Chat</option>
+                        <option value="inbox">Volume Inbox</option>
+                        <option value="volume">Evolução Atendimento Total</option>
+                    </select>
                 </div>
-                <hr class="divisor">
-                <div id="resumoIndividual"></div>
-                <button onclick="gerarRelatorio()" class="btn-relatorio">📄 Gerar Relatório (PDF)</button>
+                <canvas id="graficoEvolucao" height="100"></canvas>
+            </div>
+
+            <div id="containerPerformance">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Operador</th>
+                            <th>Data</th>
+                            <th>Chat</th>
+                            <th>Inbox</th>
+                            <th>Total</th>
+                            <th>Meta-120</th>
+                            <th>CSAT</th>
+                            <th>Ações</th>
+                        </tr>
+                    </thead>
+                    <tbody id="corpoTabela"></tbody>
+                </table>
+
+                <div id="painelMedia" class="card-media">
+                    <div class="grid-metricas">
+                        <div><small>Total Chat</small><h3 id="totalChatPeriodo">0</h3></div>
+                        <div><small>Total Inbox</small><h3 id="totalInboxPeriodo">0</h3></div>
+                        <div><small>Volume Geral</small><h3 id="totalGeralPeriodo">0</h3></div>
+                        <div><small>Média Geral Volume</small><h3 id="valorMedia" class="destaque-media">0</h3></div>
+                        <div><small>CSAT Geral</small><h3 id="totalCsatGeral" class="destaque-media">0%</h3></div>
+                    </div>
+                    <hr class="divisor">
+                    <div id="resumoIndividual"></div>
+                    <button onclick="gerarRelatorio()" class="btn-relatorio">📄 Gerar Relatório (PDF)</button>
+                </div>
             </div>
         </div>
     </main>

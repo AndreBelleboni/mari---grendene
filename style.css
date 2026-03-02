@@ -209,20 +209,43 @@ th {
     padding-bottom: 5px;
     border-bottom: 1px solid #f0f0f0;
 }
-
-/* --- CONFIGURAÇÕES DE IMPRESSÃO --- */
+/* --- CONFIGURAÇÕES EXCLUSIVAS PARA O RELATÓRIO (IMPRESSÃO) --- */
 @media print {
-    body { padding: 0; background-color: white; }
-    body * { visibility: hidden; }
-    #secaoResultados, #secaoResultados * { visibility: visible; }
-    #secaoResultados {
-        position: absolute;
-        left: 0;
-        top: 0;
-        width: 100%;
-        display: block !important;
-    }
-    .btn-excluir, .btn-editar, .btn-relatorio, .btn-limpar, .btn-perigo, #btnLogout {
+    /* 1. Esconde a barra de seleção (Mostrar Gráfico / Mostrar Tabela) */
+    .secaoResultados > div[style*="background: rgb(249, 249, 249)"],
+    .secaoResultados > div[style*="background: #f9f9f9"],
+    .label-switch,
+    #exibirGrafico,
+    #exibirTabela {
         display: none !important;
+    }
+
+    /* 2. Esconde a coluna "Ações" na tabela */
+    /* Pegamos a última coluna do cabeçalho e do corpo */
+    table th:last-child, 
+    table td:last-child {
+        display: none !important;
+    }
+
+    /* 3. Esconde o cabeçalho principal e formulários (Limpeza Geral) */
+    header, 
+    .container:not(#secaoResultados),
+    #btnLogout,
+    .btn-relatorio {
+        display: none !important;
+    }
+
+    /* 4. Ajustes de layout para a folha A4 */
+    #secaoResultados {
+        display: block !important;
+        width: 100% !important;
+        margin: 0 !important;
+        padding: 0 !important;
+        box-shadow: none !important;
+    }
+
+    canvas {
+        max-width: 100% !important;
+        height: auto !important;
     }
 }

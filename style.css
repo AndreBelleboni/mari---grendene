@@ -209,11 +209,13 @@ th {
     padding-bottom: 5px;
     border-bottom: 1px solid #f0f0f0;
 }
+
 /* --- CONFIGURAÇÕES EXCLUSIVAS PARA O RELATÓRIO (IMPRESSÃO) --- */
 @media print {
     /* 1. Esconde a barra de seleção (Mostrar Gráfico / Mostrar Tabela) */
-    .secaoResultados > div[style*="background: rgb(249, 249, 249)"],
-    .secaoResultados > div[style*="background: #f9f9f9"],
+    /* Correção: Usando #secaoResultados para combinar com seu HTML */
+    #secaoResultados > div[style*="background: #f9f9f9"],
+    #secaoResultados > div[style*="background: rgb(249, 249, 249)"],
     .label-switch,
     #exibirGrafico,
     #exibirTabela {
@@ -221,7 +223,6 @@ th {
     }
 
     /* 2. Esconde a coluna "Ações" na tabela */
-    /* Pegamos a última coluna do cabeçalho e do corpo */
     table th:last-child, 
     table td:last-child {
         display: none !important;

@@ -7,7 +7,7 @@ import { onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/
 let registrosLocais = [];
 let meuGrafico = null; 
 
-// Registrar o plugin para mostrar números nos pontos do gráfico (Datalabels)
+// Registrar o plugin para mostrar números (Datalabels)
 Chart.register(ChartDataLabels);
 
 /* --- CONTROLE DE ACESSO --- */
@@ -16,7 +16,7 @@ onAuthStateChanged(auth, (user) => {
     else escutarDados();
 });
 
-/* --- FUNÇÕES DE INTERFACE (MOSTRAR/ESCONDER) --- */
+/* --- FUNÇÕES DE INTERFACE --- */
 window.toggleGrafico = () => {
     const check = document.getElementById('exibirGrafico').checked;
     const container = document.getElementById('containerDoGrafico');
@@ -30,26 +30,30 @@ window.togglePerformance = () => {
     container.style.display = check ? 'block' : 'none';
 };
 
-/* --- SALVAR DADOS (SUPORTE A VÍRGULA NO CSAT) --- */
+/* --- SALVAR DADOS --- */
 window.salvarDados = async () => {
     const nome = document.getElementById('nome').value.trim();
     const data = document.getElementById('data').value;
     const chat = parseInt(document.getElementById('chat').value) || 0;
     const inbox = parseInt(document.getElementById('inbox').value) || 0;
     
-    // Converte vírgula em ponto antes de salvar no Firebase
-    const csatInput = document.getElementById('csat').value;
-    const csat = parseFloat(csatInput.toString().replace(',', '.')) || 0;
+    const csatOpInput = document.getElementById('csatOperacional').value;
+    const csatOp = parseFloat(csatOpInput.toString().replace(',', '.')) || 0;
+    
+    const csatAtInput = document.getElementById('csat').value;
+    const csatAt = parseFloat(csatAtInput.toString().replace(',', '.')) || 0;
     
     const volumeTotal = chat + inbox;
 
     if (nome && data) {
         try {
             await addDoc(collection(db, "producao"), { 
-                nome, data, chat, inbox, volume: volumeTotal, csat: csat 
+                nome, data, chat, inbox, volume: volumeTotal, 
+                csat: csatAt, 
+                csatOp: csatOp 
             });
             alert("Dados salvos com sucesso!");
-            ['nome', 'chat', 'inbox', 'csat', 'data'].forEach(id => {
+            ['nome', 'chat', 'inbox', 'csat', 'csatOperacional', 'data'].forEach(id => {
                 const el = document.getElementById(id);
                 if(el) el.value = '';
             });
@@ -59,22 +63,23 @@ window.salvarDados = async () => {
     }
 };
 
-/* --- EDITAR REGISTRO (SUPORTE A VÍRGULA NO PROMPT) --- */
+/* --- EDITAR REGISTRO --- */
 window.editarRegistro = async (id) => {
     const item = registrosLocais.find(r => r.id === id);
     if (!item) return;
-
     const nC = prompt(`Novo Chat para ${item.nome}:`, item.chat);
     const nI = prompt(`Novo Inbox para ${item.nome}:`, item.inbox);
-    const nS = prompt(`Novo CSAT % para ${item.nome}:`, item.csat);
+    const nSOp = prompt(`Novo CSAT Operacional %:`, item.csatOp || 0);
+    const nSAt = prompt(`Novo CSAT Atendimento %:`, item.csat);
 
-    if (nC !== null && nI !== null && nS !== null) {
+    if (nC !== null && nI !== null && nSOp !== null && nSAt !== null) {
         const vC = parseInt(nC) || 0;
         const vI = parseInt(nI) || 0;
-        const vS = parseFloat(nS.toString().replace(',', '.')) || 0;
+        const vSOp = parseFloat(nSOp.toString().replace(',', '.')) || 0;
+        const vSAt = parseFloat(nSAt.toString().replace(',', '.')) || 0;
         try {
             await updateDoc(doc(db, "producao", id), {
-                chat: vC, inbox: vI, csat: vS, volume: vC + vI
+                chat: vC, inbox: vI, csatOp: vSOp, csat: vSAt, volume: vC + vI
             });
         } catch (e) { alert("Erro ao atualizar o registro."); }
     }
@@ -90,7 +95,6 @@ function escutarDados() {
     });
 }
 
-/* --- AUTOCOMPLETE E CHECKBOXES --- */
 function atualizarSugestoesAutocomplete() {
     const datalist = document.getElementById('listaNomes');
     if (!datalist) return;
@@ -105,21 +109,23 @@ function atualizarListasDeNomes() {
     const containerCheck = document.getElementById('containerCheckboxes');
     if (!containerCheck) return;
     const nomesUnicos = [...new Set(registrosLocais.map(item => item.nome))].sort();
+    const marcados = Array.from(document.querySelectorAll('#containerCheckboxes input:checked')).map(cb => cb.value);
+    
     containerCheck.innerHTML = ''; 
     nomesUnicos.forEach(nome => {
         const label = document.createElement('label');
         label.className = 'item-checkbox';
-        label.innerHTML = `<input type="checkbox" value="${nome}" onchange="filtrar()"> <span>${nome}</span>`;
+        const isChecked = marcados.includes(nome) ? 'checked' : '';
+        label.innerHTML = `<input type="checkbox" value="${nome}" onchange="filtrar()" ${isChecked}> <span>${nome}</span>`;
         containerCheck.appendChild(label);
     });
 }
 
-/* --- FILTRAR E RENDERIZAR (COM ORDENAÇÃO DUPLA) --- */
+/* --- FILTRAR E RENDERIZAR --- */
 window.filtrar = () => {
     const selecionados = Array.from(document.querySelectorAll('#containerCheckboxes input:checked')).map(cb => cb.value);
     const dataIni = document.getElementById('dataInicio').value;
     const dataFim = document.getElementById('dataFim').value;
-    const tipoMetrica = document.getElementById('tipoGrafico').value;
     const graficoAtivo = document.getElementById('exibirGrafico').checked;
     
     let filtrados = registrosLocais.filter(item => {
@@ -128,11 +134,8 @@ window.filtrar = () => {
         return bateNome && noPeriodo;
     });
 
-    // ORDENAÇÃO: 1º Data (Antigo p/ Novo) e 2º Nome (Alfabética)
     filtrados.sort((a, b) => {
-        if (a.data !== b.data) {
-            return a.data.localeCompare(b.data); 
-        }
+        if (a.data !== b.data) return a.data.localeCompare(b.data); 
         return a.nome.localeCompare(b.nome);
     });
 
@@ -143,70 +146,87 @@ window.filtrar = () => {
     
     if (filtrados.length > 0) {
         processarMetricas(filtrados);
-        if (graficoAtivo) {
-            // O gráfico usa os dados já ordenados por data
-            gerarGrafico(filtrados, tipoMetrica, selecionados);
-        }
+        if (graficoAtivo) gerarGrafico(filtrados);
     }
 };
 
-/* --- GERAR GRÁFICO (MULTI-LINHAS E VALORES FIXOS) --- */
-function gerarGrafico(dados, metrica, selecionados) {
+/* --- GERAR GRÁFICO --- */
+function gerarGrafico(dados) {
     const canvas = document.getElementById('graficoEvolucao');
     if (!canvas) return;
     const ctx = canvas.getContext('2d');
     if (meuGrafico) meuGrafico.destroy();
 
-    const datasUnicas = [...new Set(dados.map(d => d.data))].sort();
-    const labelsFormatadas = datasUnicas.map(d => d.split('-').reverse().slice(0, 2).join('/'));
-
-    // Garante que a legenda e as linhas sigam ordem alfabética
-    const nomesNoGrafico = (selecionados.length > 0 ? selecionados : [...new Set(dados.map(d => d.nome))]).sort();
-    const cores = ['#007bff', '#28a745', '#ffc107', '#dc3545', '#6610f2', '#fd7e14', '#20c997', '#e83e8c'];
-
-    const datasets = nomesNoGrafico.map((nome, index) => {
-        const corBase = cores[index % cores.length];
-        const valoresData = datasUnicas.map(data => {
-            const registro = dados.find(d => d.data === data && d.nome === nome);
-            if (!registro) return null;
-            return metrica === 'csat' ? registro.csat : (registro[metrica] || 0);
-        });
-
-        return {
-            label: nome,
-            data: valoresData,
-            borderColor: corBase,
-            backgroundColor: corBase,
-            pointRadius: 6,
-            borderWidth: 3,
-            tension: 0.2,
-            spanGaps: true, // Conecta os pontos se houver buracos na data
-            datalabels: {
-                display: true,
-                align: 'top',
-                anchor: 'end',
-                offset: 2,
-                formatter: (val) => val !== null ? (metrica === 'csat' ? val + '%' : val) : '',
-                font: { weight: 'bold', size: 10 }
-            }
-        };
+    const labelsEixoX = dados.map(d => {
+        const dataPt = d.data.split('-').reverse().slice(0, 2).join('/');
+        const primeiroNome = d.nome.split(' ')[0];
+        return [dataPt, primeiroNome]; 
     });
 
+    const coresDisponiveis = [
+        '#004a99', '#e6194b', '#3cb44b', '#f58231', '#911eb4', 
+        '#06cefb', '#f032e6', '#f6f606', '#469990', '#ad5e04',
+        '#800000', '#05f84e', '#808000', '#ffd8b1', '#000075',
+        '#a9a9a9', '#fabebe', '#9c05f9', '#59584a', '#000000'
+    ];
+    
+    const nomesUnicos = [...new Set(registrosLocais.map(r => r.nome))].sort();
+    const mapaCores = {};
+    nomesUnicos.forEach((nome, i) => { mapaCores[nome] = coresDisponiveis[i % coresDisponiveis.length]; });
+    const coresDasBarras = dados.map(d => mapaCores[d.nome]);
+
     meuGrafico = new Chart(ctx, {
-        type: 'line',
-        data: { labels: labelsFormatadas, datasets: datasets },
+        data: {
+            labels: labelsEixoX,
+            datasets: [
+                {
+                    label: 'Volume Total',
+                    type: 'bar',
+                    data: dados.map(d => d.volume),
+                    backgroundColor: coresDasBarras,
+                    borderColor: coresDasBarras,
+                    borderWidth: 1,
+                    yAxisID: 'y',
+                    datalabels: {
+                        anchor: 'end', align: 'top', color: '#444', font: { weight: 'bold' }
+                    }
+                },
+                {
+                    label: 'CSAT - Atendimento %',
+                    type: 'line',
+                    data: dados.map(d => d.csat),
+                    borderColor: '#444', 
+                    pointBackgroundColor: coresDasBarras, 
+                    pointBorderColor: '#fff',
+                    pointRadius: 6,
+                    borderWidth: 2,
+                    tension: 0.3,
+                    yAxisID: 'y1',
+                    datalabels: {
+                        anchor: 'center', align: 'right', offset: 10, color: '#333',
+                        formatter: (v) => v + '%', font: { weight: 'bold' }
+                    }
+                }
+            ]
+        },
         options: {
             responsive: true,
-            layout: { padding: { top: 35, right: 10 } },
+            maintainAspectRatio: false,
             plugins: {
-                legend: { display: true, position: 'top' },
-                datalabels: { color: '#444' }
+                legend: { 
+                    display: true, position: 'top',
+                    labels: {
+                        generateLabels: (chart) => [
+                            { text: 'Volume (Barras)', fillStyle: '#004a99', strokeStyle: '#004a99' },
+                            { text: 'CSAT - Atendimento % (Linha)', fillStyle: '#444', strokeStyle: '#444' }
+                        ]
+                    }
+                }
             },
-            scales: { 
-                y: { 
-                    beginAtZero: true, 
-                    max: metrica === 'csat' ? 115 : undefined // Margem extra para os labels
-                } 
+            scales: {
+                x: { ticks: { font: { size: 10, weight: 'bold' }, autoSkip: false } },
+                y: { beginAtZero: true },
+                y1: { beginAtZero: true, min: 0, max: 120, position: 'right', grid: { drawOnChartArea: false } }
             }
         }
     });
@@ -218,7 +238,8 @@ window.renderizarTabela = (lista) => {
     if (!corpo) return;
     corpo.innerHTML = '';
     lista.forEach(item => {
-        const vS = parseFloat(item.csat) || 0;
+        const vSOp = parseFloat(item.csatOp) || 0;
+        const vSAt = parseFloat(item.csat) || 0;
         corpo.innerHTML += `
             <tr>
                 <td>${item.nome}</td>
@@ -226,8 +247,8 @@ window.renderizarTabela = (lista) => {
                 <td>${item.chat || 0}</td>
                 <td>${item.inbox || 0}</td>
                 <td>${item.volume || 0}</td>
-                <td><span class="${item.volume >= 120 ? 'meta-ok' : 'meta-ruim'}">${item.volume >= 120 ? 'Acima' : 'Abaixo'}</span></td>
-                <td><span class="${vS >= 80 ? 'csat-bom' : 'csat-ruim'}">${vS}%</span></td>
+                <td><span class="${vSOp >= 80 ? 'meta-ok' : 'meta-ruim'}">${vSOp}%</span></td>
+                <td><span class="${vSAt >= 80 ? 'csat-bom' : 'csat-ruim'}">${vSAt}%</span></td>
                 <td>
                     <button class="btn-editar" onclick="editarRegistro('${item.id}')">✏️</button>
                     <button class="btn-excluir" onclick="apagarRegistro('${item.id}')">🗑️</button>
@@ -236,65 +257,100 @@ window.renderizarTabela = (lista) => {
     });
 };
 
-/* --- PROCESSAR MÉTRICAS (RESUMO INDIVIDUAL COM CHAT/INBOX) --- */
+/* --- PROCESSAR MÉTRICAS (RESUMO INDIVIDUAL + MÉDIA CSAT ÚLTIMO DIA) --- */
 function processarMetricas(lista) {
-    let tC = 0, tI = 0, tV = 0, sS = 0;
-    const resumo = {};
+    let tChat = 0, tInbox = 0, tGeral = 0;
+    const operadores = {};
 
+    // 1. Acumular valores totais e identificar a última data geral
     lista.forEach(item => {
-        const csat = parseFloat(item.csat) || 0;
-        const vChat = (item.chat || 0);
-        const vInbox = (item.inbox || 0);
-        const vTotal = (item.volume || 0);
+        tChat += (item.chat || 0);
+        tInbox += (item.inbox || 0);
+        tGeral += (item.volume || 0);
 
-        tC += vChat; tI += vInbox; tV += vTotal; sS += csat;
-
-        if (!resumo[item.nome]) {
-            resumo[item.nome] = { chat: 0, inbox: 0, total: 0, qtd: 0, ultimoCsat: csat, ultimaData: item.data };
-        } else if (item.data >= resumo[item.nome].ultimaData) {
-            resumo[item.nome].ultimoCsat = csat;
-            resumo[item.nome].ultimaData = item.data;
+        if (!operadores[item.nome]) {
+            operadores[item.nome] = { 
+                chat: 0, inbox: 0, volume: 0, 
+                ultimaData: item.data, csatOp: 0, csatAt: 0 
+            };
         }
-        resumo[item.nome].chat += vChat;
-        resumo[item.nome].inbox += vInbox;
-        resumo[item.nome].total += vTotal;
-        resumo[item.nome].qtd++;
+
+        // Soma total do período selecionado
+        operadores[item.nome].chat += (item.chat || 0);
+        operadores[item.nome].inbox += (item.inbox || 0);
+        operadores[item.nome].volume += (item.volume || 0);
+
+        // Captura o CSAT da última data de cada operador
+        if (item.data >= operadores[item.nome].ultimaData) {
+            operadores[item.nome].ultimaData = item.data;
+            operadores[item.nome].csatOp = item.csatOp || 0;
+            operadores[item.nome].csatAt = item.csat || 0;
+        }
     });
 
-    const mGeralS = (sS / lista.length).toFixed(1);
-    document.getElementById('totalChatPeriodo').innerText = tC;
-    document.getElementById('totalInboxPeriodo').innerText = tI;
-    document.getElementById('totalGeralPeriodo').innerText = tV;
-    document.getElementById('valorMedia').innerText = (tV / lista.length).toFixed(2);
+    // 2. Cálculo das Médias de CSAT (Apenas para os registros da última data absoluta da lista)
+    const datas = lista.map(item => item.data);
+    const dataMaisRecenteGlobal = datas.reduce((a, b) => a > b ? a : b);
+    const registrosUltimaData = lista.filter(item => item.data === dataMaisRecenteGlobal);
     
-    const elS = document.getElementById('totalCsatGeral');
-    elS.innerText = mGeralS + "%";
-    elS.className = `destaque-media ${mGeralS >= 80 ? 'csat-bom' : 'csat-ruim'}`;
-
-    let html = "<h4>Resumo Individual no Período:</h4><ul style='list-style:none; padding:0;'>";
-    // Exibição do resumo em ordem alfabética
-    Object.keys(resumo).sort().forEach(nome => {
-        const r = resumo[nome];
-        const mI = (r.total / r.qtd).toFixed(2);
-        const cor = r.ultimoCsat >= 80 ? "#28a745" : "#d9534f";
-        
-        html += `<li class="resumo-item" style="margin-bottom: 8px;">
-            <b>${nome}</b>: Chat: ${r.chat} | Inbox: ${r.inbox} | Total: ${r.total} | 
-            Média: ${mI} | Último CSAT: <b style="color:${cor}">${r.ultimoCsat}%</b>
-        </li>`;
+    let somaOpGeral = 0, somaAtGeral = 0;
+    registrosUltimaData.forEach(item => {
+        somaOpGeral += parseFloat(item.csatOp) || 0;
+        somaAtGeral += parseFloat(item.csat) || 0;
     });
-    html += "</ul>";
-    document.getElementById('resumoIndividual').innerHTML = html;
+
+    const mOpFinal = (somaOpGeral / registrosUltimaData.length).toFixed(1);
+    const mAtFinal = (somaAtGeral / registrosUltimaData.length).toFixed(1);
+
+    // 3. Atualizar Cards de Totais Gerais (Interface Superior)
+    document.getElementById('totalChatPeriodo').innerText = tChat;
+    document.getElementById('totalInboxPeriodo').innerText = tInbox;
+    document.getElementById('totalGeralPeriodo').innerText = tGeral;
+    
+    const numDias = [...new Set(lista.map(i => i.data))].length;
+    document.getElementById('valorMedia').innerText = (tGeral / numDias).toFixed(2);
+
+    // 4. Atualizar os Cards de CSAT (Interface Final/Rodapé)
+    const elOp = document.getElementById('mediaCsatOpRecente');
+    const elAt = document.getElementById('mediaCsatAtRecente');
+
+    elOp.innerText = mOpFinal + "%";
+    elOp.className = `destaque-media ${mOpFinal >= 80 ? 'meta-ok' : 'meta-ruim'}`;
+    elAt.innerText = mAtFinal + "%";
+    elAt.className = `destaque-media ${mAtFinal >= 80 ? 'csat-bom' : 'csat-ruim'}`;
+
+    // 5. Gerar o HTML do Resumo Individual por Operador
+    let html = `<h4>Resumo por Operador:</h4><ul style='list-style:none; padding:0;'>`;
+    
+    Object.keys(operadores).sort().forEach(nome => {
+        const op = operadores[nome];
+        const corAt = op.csatAt >= 80 ? "#28a745" : "#d9534f";
+        const corOp = op.csatOp >= 80 ? "#28a745" : "#d9534f";
+
+        html += `
+            <li class="resumo-item" style="margin-bottom: 8px; border-bottom: 1px solid #eee; padding-bottom: 4px;">
+                <b>${nome}</b>: 
+                <br>
+                <small><b>Total Att: ${op.volume}</b> | Chat: ${op.chat} | Inbox: ${op.inbox}</small>
+                <br>
+                <small><b>CSAT:</b>
+                    Operacional: <b><span style="color:${corOp}">${op.csatOp}%</span></b> | 
+                    Atendimento: <b><span style="color:${corAt}">${op.csatAt}%</span></b>
+                </small>
+            </li>`;
+    });
+    
+    document.getElementById('resumoIndividual').innerHTML = html + "</ul>";
 }
 
-/* --- EXCLUSÃO E UTILITÁRIOS --- */
+/* --- UTILITÁRIOS --- */
 window.apagarRegistro = async (id) => { 
     if (confirm("Deseja realmente excluir este registro?")) await deleteDoc(doc(db, "producao", id)); 
 };
 
 window.excluirAtendenteCompleto = async () => {
-    const nome = prompt("Digite o nome EXATO do atendente para excluir TODO o histórico:");
-    if (nome && confirm(`Apagar TUDO relacionado a ${nome}?`)) {
+    const nome = prompt("Digite o nome EXATO do atendente:");
+    if (nome && confirm(`Apagar TUDO de ${nome}?`)) {
         const q = query(collection(db, "producao"), where("nome", "==", nome));
         const snap = await getDocs(q);
         const batch = writeBatch(db);

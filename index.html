@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="pt-br">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -8,6 +9,7 @@
     <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2"></script>
     <link rel="stylesheet" href="style.css">
 </head>
+
 <body>
     <header>
         <h1>Dados Operação - Maristela</h1>
@@ -20,11 +22,14 @@
             <div class="grid-inputs">
                 <input type="text" id="nome" placeholder="Nome do Liderado" list="listaNomes" autocomplete="off">
                 <datalist id="listaNomes"></datalist>
-                
+
                 <input type="date" id="data">
                 <input type="number" id="chat" placeholder="Volume Chat">
                 <input type="number" id="inbox" placeholder="Volume Inbox">
-                <input type="text" id="csat" placeholder="CSAT % (ex: 85,5)">
+                
+                <input type="text" id="csatOperacional" placeholder="CSAT Operacional %">
+                <input type="text" id="csat" placeholder="CSAT Atendimento %">
+                
                 <button onclick="salvarDados()">Salvar Dados</button>
             </div>
         </div>
@@ -36,12 +41,12 @@
                     <label class="label-filtro">Selecionar Equipe:</label>
                     <div id="containerCheckboxes" class="lista-checkbox"></div>
                 </div>
-                
+
                 <div style="display: flex; flex-direction: column; gap: 10px; flex: 1;">
                     <label class="label-filtro">Período:</label>
                     <input type="date" id="dataInicio" onchange="filtrar()">
                     <input type="date" id="dataFim" onchange="filtrar()">
-                    
+
                     <label class="label-filtro">Classificar tabela por:</label>
                     <select id="ordenacao" onchange="filtrar()">
                         <option value="data_asc">Data (Mais Antigo)</option>
@@ -74,31 +79,22 @@
                 </label>
             </div>
 
-            <div id="containerDoGrafico" class="container-grafico" style="background: #fff; padding: 15px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); margin-bottom: 20px;">
-                <div style="margin-bottom: 10px; display: flex; gap: 10px; align-items: center;">
-                    <label>Ver evolução de:</label>
-                    <select id="tipoGrafico" onchange="filtrar()">
-                        <option value="csat">Evolução de CSAT (%)</option>
-                        <option value="chat">Volume Chat</option>
-                        <option value="inbox">Volume Inbox</option>
-                        <option value="volume">Evolução Atendimento Total</option>
-                    </select>
-                </div>
-                <canvas id="graficoEvolucao" height="100"></canvas>
+            <div id="containerDoGrafico" class="container-grafico">
+                <canvas id="graficoEvolucao"></canvas>
             </div>
 
             <div id="containerPerformance">
                 <table>
                     <thead>
                         <tr>
-                            <th>Operador</th>
-                            <th>Data</th>
-                            <th>Chat</th>
-                            <th>Inbox</th>
-                            <th>Total</th>
-                            <th>Meta-120</th>
-                            <th>CSAT</th>
-                            <th>Ações</th>
+                            <th>NOME</th>
+                            <th>DATA</th>
+                            <th>CHAT</th>
+                            <th>INBOX</th>
+                            <th>TOTAL</th>
+                            <th>CSAT - OPERACIONAL</th>
+                            <th>CSAT - ATENDIMENTO</th>
+                            <th>AÇÕES</th>
                         </tr>
                     </thead>
                     <tbody id="corpoTabela"></tbody>
@@ -109,8 +105,9 @@
                         <div><small>Total Chat</small><h3 id="totalChatPeriodo">0</h3></div>
                         <div><small>Total Inbox</small><h3 id="totalInboxPeriodo">0</h3></div>
                         <div><small>Volume Geral</small><h3 id="totalGeralPeriodo">0</h3></div>
-                        <div><small>Média Geral Volume</small><h3 id="valorMedia" class="destaque-media">0</h3></div>
-                        <div><small>CSAT Geral</small><h3 id="totalCsatGeral" class="destaque-media">0%</h3></div>
+                        <div><small>Média Vol. Diário</small><h3 id="valorMedia" class="destaque-media">0</h3></div>
+                        <div><small>CSAT Operacional</small><h3 id="mediaCsatOpRecente" class="destaque-media">0%</h3></div>
+                        <div><small>CSAT Atendimento</small><h3 id="mediaCsatAtRecente" class="destaque-media">0%</h3></div>
                     </div>
                     <hr class="divisor">
                     <div id="resumoIndividual"></div>

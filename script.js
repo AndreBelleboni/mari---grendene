@@ -326,7 +326,7 @@ function processarMetricas(lista) {
     elAt.className = `destaque-media ${mAtFinal >= 80 ? 'csat-bom' : 'csat-ruim'}`;
 
     // 5. Gerar o HTML do Resumo Individual por Operador
-    let html = `<h4>Resumo por Operador (Total Período | CSAT Último Dia):</h4><ul style='list-style:none; padding:0;'>`;
+    let html = `<h4>Resumo por Operador:</h4><ul style='list-style:none; padding:0;'>`;
     
     Object.keys(operadores).sort().forEach(nome => {
         const op = operadores[nome];
@@ -337,11 +337,11 @@ function processarMetricas(lista) {
             <li class="resumo-item" style="margin-bottom: 8px; border-bottom: 1px solid #eee; padding-bottom: 4px;">
                 <b>${nome}</b>: 
                 <br>
-                <small>Volumes Totais: Chat: ${op.chat} | Inbox: ${op.inbox} | <b>Soma: ${op.volume}</b></small>
+                <small><b>Total Att: ${op.volume}</b> | Chat: ${op.chat} | Inbox: ${op.inbox}</small>
                 <br>
-                <small>Último CSAT: 
-                    Op: <span style="color:${corOp}">${op.csatOp}%</span> | 
-                    Atend: <span style="color:${corAt}">${op.csatAt}%</span>
+                <small><b>CSAT:</b> 
+                    Processos: <span style="color:${corOp}">${op.csatOp}%</span> | 
+                    Atendimento: <span style="color:${corAt}">${op.csatAt}%</span>
                 </small>
             </li>`;
     });

@@ -340,8 +340,8 @@ function processarMetricas(lista) {
                 <small><b>Total Att: ${op.volume}</b> | Chat: ${op.chat} | Inbox: ${op.inbox}</small>
                 <br>
                 <small><b>CSAT:</b> 
-                    Processos: <span style="color:${corOp}">${op.csatOp}%</span> | 
-                    Atendimento: <span style="color:${corAt}">${op.csatAt}%</span>
+                    Processos: <b><span style="color:${corOp}">${op.csatOp}%</span></b> | 
+                    Atendimento: <b><span style="color:${corAt}">${op.csatAt}%</span></b>
                 </small>
             </li>`;
     });

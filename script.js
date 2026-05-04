@@ -257,12 +257,12 @@ window.renderizarTabela = (lista) => {
     });
 };
 
-/* --- PROCESSAR MÉTRICAS (RESUMO INDIVIDUAL + MÉDIA CSAT ÚLTIMO DIA) --- */
+/* --- PROCESSAR MÉTRICAS (RESUMO ATUALIZADO COM MÉDIA POR OPERADOR) --- */
 function processarMetricas(lista) {
     let tChat = 0, tInbox = 0, tGeral = 0;
     const operadores = {};
 
-    // 1. Acumular valores totais e identificar a última data geral
+    // 1. Acumular valores totais e identificar a última data por operador
     lista.forEach(item => {
         tChat += (item.chat || 0);
         tInbox += (item.inbox || 0);
@@ -288,7 +288,7 @@ function processarMetricas(lista) {
         }
     });
 
-    // 2. Cálculo das Médias de CSAT (Apenas para os registros da última data absoluta da lista)
+    // 2. Cálculo das Médias de CSAT Globais (Baseado na última data registrada de cada um)
     const datas = lista.map(item => item.data);
     const dataMaisRecenteGlobal = datas.reduce((a, b) => a > b ? a : b);
     const registrosUltimaData = lista.filter(item => item.data === dataMaisRecenteGlobal);
@@ -307,8 +307,14 @@ function processarMetricas(lista) {
     document.getElementById('totalInboxPeriodo').innerText = tInbox;
     document.getElementById('totalGeralPeriodo').innerText = tGeral;
     
-    const numDias = [...new Set(lista.map(i => i.data))].length;
-    document.getElementById('valorMedia').innerText = (tGeral / numDias).toFixed(2);
+    // Cálculo da Média Diária POR OPERADOR
+    const operacoesUnicas = [...new Set(lista.map(i => i.nome))];
+    const datasUnicas = [...new Set(lista.map(i => i.data))];
+    const numOp = operacoesUnicas.length > 0 ? operacoesUnicas.length : 1;
+    const numDias = datasUnicas.length > 0 ? datasUnicas.length : 1;
+    
+    const mediaDiariaPorOperador = (tGeral / (numOp * numDias)).toFixed(2);
+    document.getElementById('valorMedia').innerText = mediaDiariaPorOperador;
 
     // 4. Atualizar os Cards de CSAT (Interface Final/Rodapé)
     const elOp = document.getElementById('mediaCsatOpRecente');
@@ -320,7 +326,7 @@ function processarMetricas(lista) {
     elAt.className = `destaque-media ${mAtFinal >= 80 ? 'csat-bom' : 'csat-ruim'}`;
 
     // 5. Gerar o HTML do Resumo Individual por Operador
-    let html = `<h4>Resumo por Operador:</h4><ul style='list-style:none; padding:0;'>`;
+    let html = `<h4>Resumo por Operador (Total Período | CSAT Último Dia):</h4><ul style='list-style:none; padding:0;'>`;
     
     Object.keys(operadores).sort().forEach(nome => {
         const op = operadores[nome];
@@ -331,11 +337,11 @@ function processarMetricas(lista) {
             <li class="resumo-item" style="margin-bottom: 8px; border-bottom: 1px solid #eee; padding-bottom: 4px;">
                 <b>${nome}</b>: 
                 <br>
-                <small><b>Total Att: ${op.volume}</b> | Chat: ${op.chat} | Inbox: ${op.inbox}</small>
+                <small>Volumes Totais: Chat: ${op.chat} | Inbox: ${op.inbox} | <b>Soma: ${op.volume}</b></small>
                 <br>
-                <small><b>CSAT:</b>
-                    Operação: <b><span style="color:${corOp}">${op.csatOp}%</span></b> | 
-                    Atendimento: <b><span style="color:${corAt}">${op.csatAt}%</span></b>
+                <small>Último CSAT: 
+                    Op: <span style="color:${corOp}">${op.csatOp}%</span> | 
+                    Atend: <span style="color:${corAt}">${op.csatAt}%</span>
                 </small>
             </li>`;
     });
